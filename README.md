@@ -94,7 +94,7 @@ No addon to install inside Resolve. No socket server. Just one MCP server that t
 
 ## Prerequisites
 
-- **DaVinci Resolve Studio** 18.0+ (free version has limited scripting support)
+- **DaVinci Resolve Studio** 18.0+ — the free edition blocks external scripting, but it can still be driven; see [Free Edition](#free-edition)
 - **Python** 3.10+
 - **uv** package manager
 
@@ -230,6 +230,66 @@ If you installed Resolve on a non-default drive (e.g. `D:\`), update `RESOLVE_SC
 
 Quit and reopen the Claude Desktop app. You should see the Resolve Claude MCP tools available (hammer icon).
 
+## Free Edition
+
+The free edition of DaVinci Resolve refuses `scriptapp("Resolve")` to any process
+other than its own, so the stdio server above connects to nothing — the tools load
+and every call fails. Scripting itself is not disabled, though: a script launched
+from Resolve's **own** Scripts menu is handed a live `resolve` object.
+
+So on the free edition the server runs *inside* Resolve, and your MCP client
+connects to it over HTTP.
+
+### Setup
+
+1. Open [`resolve-scripts/MCP Server.py`](resolve-scripts/MCP%20Server.py) and set
+   `PROJECT` to your clone of this repository (or set the `RESOLVE_CLAUDE_MCP_HOME`
+   environment variable).
+
+2. Copy it into Resolve's Utility scripts folder:
+
+   | Platform | Folder |
+   |---|---|
+   | Windows | `%APPDATA%\Blackmagic Design\DaVinci Resolve\Support\Fusion\Scripts\Utility` |
+   | macOS | `~/Library/Application Support/Blackmagic Design/DaVinci Resolve/Fusion/Scripts/Utility` |
+   | Linux | `~/.local/share/DaVinciResolve/Fusion/Scripts/Utility` |
+
+3. Register the HTTP endpoint with your MCP client instead of the stdio command:
+
+   ```json
+   {
+     "mcpServers": {
+       "resolve": {
+         "type": "http",
+         "url": "http://127.0.0.1:8765/mcp"
+       }
+     }
+   }
+   ```
+
+### Each session
+
+Open a project, then run **Workspace > Scripts > MCP Server**. The script does not
+return — it serves until you stop it, and it writes `mcp_server.log` next to itself
+recording the pid, the detected product and version, and the endpoint.
+
+Trade-offs against the Studio route:
+
+- One launch per Resolve session; the server dies with Resolve.
+- Resolve must stay open, as it already must for Studio.
+- `RESOLVE_SCRIPT_API` / `RESOLVE_SCRIPT_LIB` are irrelevant here — nothing is
+  imported from Blackmagic's scripting module.
+
+Every tool works unchanged. Only the way `ResolveConnection` acquires the `resolve`
+object is swapped, and that is the one thing the free edition denies.
+
+### Why there is no click-free version
+
+Resolve's internal script server is not running between script launches. Resolve
+passes the connection to its child as `fuscript.exe -q -l Py3 -a <handle> <script>`,
+where `-a` is an inherited handle rather than a port, so the invocation cannot be
+reproduced from outside. `fuscript -p` finds no script app to attach to either.
+
 ## Usage
 
 Make sure DaVinci Resolve Studio is running with a project open, then talk to Claude:
@@ -303,6 +363,14 @@ Make sure DaVinci Resolve Studio is running with a project open, then talk to Cl
 - Make sure DaVinci Resolve Studio is running
 - Check that scripting is enabled in **Preferences > General > External scripting using**
 - Verify the `RESOLVE_SCRIPT_LIB` path matches your installation
+- On the **free edition** this always fails for the stdio server — use the
+  [Free Edition](#free-edition) route instead
+
+### Free-edition server won't start
+- Launch it from **Workspace > Scripts**, not a terminal: outside Resolve there is
+  no `resolve` object to borrow, and the script exits saying so
+- Read `mcp_server.log` next to the script — it records the exact failure
+- If it reports no virtualenv, fix `PROJECT` at the top of the script, then `uv sync`
 
 ### "Failed to import DaVinciResolveScript"
 - Check that `PYTHONPATH` in the config points to the correct Modules directory
@@ -318,7 +386,7 @@ Make sure DaVinci Resolve Studio is running with a project open, then talk to Cl
 
 ## Important Notes
 
-- **DaVinci Resolve Studio** is required for full scripting API access. The free version has limited scripting support.
+- **DaVinci Resolve Studio** is required for the stdio server. The free edition blocks external scripting, so it needs the [Free Edition](#free-edition) route, which trades a per-session launch for the same tool set.
 - `execute_resolve_code` runs arbitrary Python — review code before executing.
 - Some tools require being on a specific page (e.g., thumbnails require the Color page).
 - The server connects to whichever project is currently open — switching projects in Resolve is reflected immediately.
