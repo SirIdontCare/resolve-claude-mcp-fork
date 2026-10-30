@@ -1,0 +1,31 @@
+{
+  "manifest_version": "0.4",
+  "name": "DaVinci Resolve",
+  "version": "0.1.0",
+  "description": "Drive DaVinci Resolve from chat: timelines, media, grading, Fusion and rendering",
+  "long_description": "Exposes DaVinci Resolve's scripting API as MCP tools.\n\nThis extension is a thin bridge: the server itself runs inside DaVinci Resolve, which is what lets it work on the free edition as well as Studio. Before using it, open a project in Resolve and run **Workspace > Scripts > MCP Server**. The extension then talks to that server over HTTP on 127.0.0.1:8765.\n\nSet RESOLVE_MCP_URL if you serve on a different host or port.",
+  "author": {
+    "name": "resolve-claude-mcp",
+    "url": "https://github.com/barckley75/resolve-claude-mcp"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/barckley75/resolve-claude-mcp"
+  },
+  "homepage": "https://github.com/barckley75/resolve-claude-mcp",
+  "server": {
+    "type": "python",
+    "entry_point": "server/bridge.py",
+    "mcp_config": {
+      "command": "python",
+      "args": ["${__dirname}/server/bridge.py"],
+      "env": {}
+    }
+  },
+  "license": "MIT",
+  "compatibility": {
+    "runtimes": {
+      "python": ">=3.9"
+    }
+  }
+}

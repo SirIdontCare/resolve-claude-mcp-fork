@@ -283,6 +283,28 @@ Trade-offs against the Studio route:
 Every tool works unchanged. Only the way `ResolveConnection` acquires the `resolve`
 object is swapped, and that is the one thing the free edition denies.
 
+### Using it from Claude chat
+
+The HTTP endpoint serves Claude Code sessions as soon as it is registered. The
+chat side of the Claude desktop app keeps a separate registry and reads neither
+`~/.claude.json` nor `claude_desktop_config.json` for servers — it loads
+**extensions**. [`chat-extension/`](chat-extension) is one: a stdlib-only
+stdio-to-HTTP bridge, so the bundle carries no dependencies.
+
+Build it and install it:
+
+```bash
+python chat-extension/build.py
+```
+
+Then in the desktop app: **Settings → Extensions → Advanced settings → Install
+extension**, and pick `chat-extension/dist/davinci-resolve.mcpb`.
+
+The bridge inherits the same requirement as everything else here: launch
+**Workspace → Scripts → MCP Server** in Resolve first. With the server down, the
+extension fails to start and says so in its log rather than loading with no
+tools. Point it elsewhere with `RESOLVE_MCP_URL` if you changed the port.
+
 ### Why there is no click-free version
 
 Resolve's internal script server is not running between script launches. Resolve
